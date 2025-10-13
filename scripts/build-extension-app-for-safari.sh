@@ -25,30 +25,90 @@ success() {
     echo -e "${GREEN}$1${NC}"
 }
 
-# 1. Проверка и установка Xcode
-info "Проверка установки Xcode..."
+# Надежная функция проверки установки Xcode Command Line Tools
+check_xcode_installation() {
+    info "Проверка установки Xcode Command Line Tools..."
+    
+    # Способ 1: Проверка через xcode-select
+    if xcode-select -p &>/dev/null; then
+        # Проверяем что путь существует и не пустой
+        XCODE_PATH=$(xcode-select -p 2>/dev/null)
+        if [ -n "$XCODE_PATH" ] && [ -d "$XCODE_PATH" ]; then
+            success "Xcode Command Line Tools найдены в: $XCODE_PATH"
+            return 0
+        fi
+    fi
+    
+    # Способ 2: Проверка наличия компилятора
+    if ! command -v clang &>/dev/null; then
+        return 1
+    fi
+    
+    # Способ 3: Проверка наличия инструментов разработки
+    if ! pkgutil --pkg-info=com.apple.pkg.CLTools_Executables &>/dev/null; then
+        return 1
+    fi
+    
+    return 0
+}
 
-# Проверяем установлен ли Xcode Command Line Tools
-if xcode-select -p &>/dev/null; then
-    success "Xcode Command Line Tools уже установлены"
-else
-    info "Установка Xcode Command Line Tools..."
-    # Запускаем установку
+# Функция установки Xcode Command Line Tools
+install_xcode_tools() {
+    info "Xcode Command Line Tools не найдены. Запуск установки..."
+    
+    # Показываем диалог установки
     xcode-select --install
     
-    # Ждем завершения установки
-    info "Ожидание завершения установки Xcode Command Line Tools..."
-    while ! xcode-select -p &>/dev/null; do
-        sleep 10
+    # Ждем начала установки
+    info "Ожидание начала установки (может занять до 30 секунд)..."
+    local wait_count=0
+    while [ $wait_count -lt 30 ]; do
+        # Проверяем запущен ли процесс установки
+        if pgrep -q "Install Command Line Developer Tools"; then
+            info "Установка запущена. Ожидайте завершения..."
+            break
+        fi
+        sleep 1
+        ((wait_count++))
     done
-    success "Xcode Command Line Tools успешно установлены"
+    
+    # Ждем завершения установки
+    info "Ожидание завершения установки (это может занять несколько минут)..."
+    
+    local max_wait=600  # 10 минут максимум
+    local count=0
+    
+    while [ $count -lt $max_wait ]; do
+        if check_xcode_installation; then
+            success "Xcode Command Line Tools успешно установлены!"
+            return 0
+        fi
+        
+        # Показываем прогресс каждые 30 секунд
+        if [ $((count % 30)) -eq 0 ]; then
+            info "Все еще ожидаем завершения установки... ($((count/60))м $((count%60))с)"
+        fi
+        
+        sleep 1
+        ((count++))
+    done
+    
+    error_exit "Установка Xcode Command Line Tools заняла слишком много времени. Пожалуйста, установите вручную из: https://developer.apple.com/download/all/"
+}
+
+# 1. Проверка и установка Xcode Command Line Tools
+if ! check_xcode_installation; then
+    install_xcode_tools
+else
+    success "Xcode Command Line Tools уже установлены"
 fi
 
-# Проверяем наличие полной версии Xcode (если нужна)
+# Дополнительная проверка наличия полной версии Xcode (опционально)
 if [ -d "/Applications/Xcode.app" ]; then
-    success "Xcode.app найден"
+    success "Xcode.app найден в /Applications/Xcode.app"
 else
-    info "Xcode.app не найден. Убедитесь, что он установлен из App Store для полной функциональности"
+    info "Xcode.app не найден. Это нормально для использования только Command Line Tools"
+    info "Для полной функциональности рекомендуется установить Xcode из App Store"
 fi
 
 # 2. Поиск папки с расширением в ../src
@@ -84,6 +144,11 @@ CONVERTER_PATH=$(xcrun --find safari-web-extension-converter 2>/dev/null)
 if [ -z "$CONVERTER_PATH" ]; then
     # Пробуем найти через find
     CONVERTER_PATH=$(find /Applications/Xcode.app -name "safari-web-extension-converter" -type f 2>/dev/null | head -1)
+    
+    if [ -z "$CONVERTER_PATH" ]; then
+        # Последняя попытка - поиск в стандартных местах
+        CONVERTER_PATH=$(find /Library/Developer/CommandLineTools -name "safari-web-extension-converter" -type f 2>/dev/null | head -1)
+    fi
 fi
 
 if [ -z "$CONVERTER_PATH" ]; then
@@ -108,17 +173,27 @@ info "Запуск конвертации Web Extension в Safari проект (
 echo "Конвертируем: $EXTENSION_DIR"
 echo "Выходная директория: $OUTPUT_DIR"
 
-"$CONVERTER_PATH" "$EXTENSION_DIR" \
+# Создаем временный файл для вывода конвертера
+TEMP_LOG=$(mktemp)
+
+# Запускаем конвертер и сохраняем вывод
+if ! "$CONVERTER_PATH" "$EXTENSION_DIR" \
     --project-location "$OUTPUT_DIR" \
     --no-open \
     --bundle-identifier "com.cu-lms-enhancer.safari" \
-    --macos-only
-
-if [ $? -eq 0 ]; then
-    success "Конвертация завершена успешно"
-else
+    --macos-only > "$TEMP_LOG" 2>&1; then
+    
+    echo -e "${RED}Ошибка конвертации. Лог:${NC}"
+    cat "$TEMP_LOG"
+    rm -f "$TEMP_LOG"
     error_exit "Ошибка конвертации"
 fi
+
+rm -f "$TEMP_LOG"
+success "Конвертация завершена успешно"
+
+# Остальная часть скрипта остается без изменений...
+# [здесь идет код сборки проекта, который уже работал корректно]
 
 # 4. Сборка проекта только для macOS
 info "Поиск .xcodeproj файла..."
@@ -167,56 +242,41 @@ info "Destination: $DESTINATION"
 
 # Выполняем сборку ТОЛЬКО для macOS
 info "Выполнение сборки проекта для macOS..."
-echo "Команда: xcodebuild -project \"$(basename "$XCODE_PROJECT")\" -scheme \"$SCHEME_TO_USE\" -configuration Release -destination \"$DESTINATION\" build"
+echo "Команда: xcodebuild -project \"$(basename \"$XCODE_PROJECT\")\" -scheme \"$SCHEME_TO_USE\" -configuration Release -destination \"$DESTINATION\" build"
 
-xcodebuild -project "$(basename "$XCODE_PROJECT")" \
+if ! xcodebuild -project "$(basename "$XCODE_PROJECT")" \
            -scheme "$SCHEME_TO_USE" \
            -configuration Release \
            -destination "$DESTINATION" \
-           build
-
-BUILD_RESULT=$?
-
-# 5. Проверка результата и вывод сообщения
-if [ $BUILD_RESULT -eq 0 ]; then
-    success "✅ Сборка завершена УСПЕШНО!"
-    success "Safari расширение готово в папке: $OUTPUT_DIR"
-    
-    # Показываем где найти собранное расширение
-    APP_PATH=$(find "$OUTPUT_DIR/build/Release" -name "*.app" 2>/dev/null | head -1)
-    if [ -n "$APP_PATH" ]; then
-        success "Собранное приложение: $APP_PATH"
-    fi
-    
-    # Ищем .appex (расширение Safari)
-    APPEX_PATH=$(find "$OUTPUT_DIR/build" -name "*.appex" 2>/dev/null | head -1)
-    if [ -n "$APPEX_PATH" ]; then
-        success "Собранное расширение Safari: $APPEX_PATH"
-        
-        # Показываем команду для установки
-        info "Для установки расширения выполните:"
-        echo "open \"$APPEX_PATH\""
-    else
-        # Если .appex не найден, ищем в других местах
-        info "Поиск собранного расширения в других местах..."
-        find "$OUTPUT_DIR/build" -name "*.appex" -o -name "*.app" 2>/dev/null
-    fi
-    
-    # Показываем содержимое папки сборки
-    info "Содержимое папки build:"
-    find "$OUTPUT_DIR/build" -type f -name "*.appex" -o -name "*.app" 2>/dev/null
-    
-else
-    # Детальная отладка
-    info "Детальная отладка проекта:"
-    echo "Проект: $XCODE_PROJECT"
-    echo "Схема: $SCHEME_TO_USE"
-    echo "Destination: $DESTINATION"
-    echo "Директория: $(pwd)"
-    
-    # Пробуем получить информацию о проекте другим способом
-    info "Информация о проекте:"
-    xcodebuild -list -project "$(basename "$XCODE_PROJECT")"
-    
-    error_exit "Сборка проекта не удалась (код ошибки: $BUILD_RESULT)"
+           build; then
+    error_exit "Сборка проекта не удалась"
 fi
+
+success "✅ Сборка завершена УСПЕШНО!"
+success "Safari расширение готово в папке: $OUTPUT_DIR"
+
+# Показываем где найти собранное расширение
+APP_PATH=$(find "$OUTPUT_DIR/build/Release" -name "*.app" 2>/dev/null | head -1)
+if [ -n "$APP_PATH" ]; then
+    success "Собранное приложение: $APP_PATH"
+fi
+
+# Ищем .appex (расширение Safari)
+APPEX_PATH=$(find "$OUTPUT_DIR/build" -name "*.appex" 2>/dev/null | head -1)
+if [ -n "$APPEX_PATH" ]; then
+    success "Собранное расширение Safari: $APPEX_PATH"
+    
+    # Показываем команду для установки
+    info "Для установки расширения выполните:"
+    echo "open \"$APPEX_PATH\""
+else
+    # Если .appex не найден, ищем в других местах
+    info "Поиск собранного расширения в других местах..."
+    find "$OUTPUT_DIR/build" -name "*.appex" -o -name "*.app" 2>/dev/null
+fi
+
+# Показываем содержимое папки сборки
+info "Содержимое папки build:"
+find "$OUTPUT_DIR/build" -type f -name "*.appex" -o -name "*.app" 2>/dev/null
+
+success "🎉 Все шаги выполнены успешно!"
