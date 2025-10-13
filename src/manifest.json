@@ -1,0 +1,65 @@
+{
+  "manifest_version": 2,
+  "name": "CU LMS Enhancer",
+  "version": "1.3",
+  "description": "Неофициальная доработка CU LMS, возвращает утерянные функции, добавляет темную тему, отображение весов заданий",
+  "permissions": [
+    "activeTab",
+    "storage",
+    "tabs",
+    "webNavigation",
+    "https://my.centraluniversity.ru/*"
+  ],
+  "background": {
+    "scripts": [
+      "browser-polyfill.js",
+      "background.js"
+    ],
+    "persistent": false
+  },
+  "web_accessible_resources": [
+    "browser-polyfill.js",
+    "course_exporter.js",
+    "courses_fix.js",
+    "dark_theme.js",
+    "debug_utils.js",
+    "emoji_swap.js",
+    "homework_weight_fix.js",
+    "icons/*.png",
+    "icons/*.svg",
+    "icons/archive.png",
+    "icons/archive.svg",
+    "icons/moon.svg",
+    "icons/sun.svg",
+    "icons/unarchive.png",
+    "icons/unarchive.svg",
+    "instant_doc_view_fix.js",
+    "style.css",
+    "style_oled.css",
+    "tasks_fix.js"
+  ],
+  "icons": {
+    "128": "icon128.png"
+  },
+  "browser_action": {
+    "default_popup": "popup.html"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://my.centraluniversity.ru/*"
+      ],
+      "js": [
+        "course_exporter.js",
+        "courses_fix.js",
+        "dark_theme.js",
+        "debug_utils.js",
+        "emoji_swap.js",
+        "homework_weight_fix.js",
+        "instant_doc_view_fix.js",
+        "tasks_fix.js"
+      ],
+      "run_at": "document_idle"
+    }
+  ]
+}
