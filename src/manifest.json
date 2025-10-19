@@ -8,7 +8,8 @@
     "storage",
     "tabs",
     "webNavigation",
-    "https://my.centraluniversity.ru/*"
+    "https://my.centraluniversity.ru/*",
+    "https://id.centraluniversity.ru/*"
   ],
   "background": {
     "scripts": [
@@ -18,6 +19,8 @@
     "persistent": false
   },
   "web_accessible_resources": [
+    "course_card_simplifier.js",
+    "fix_email_autocomplete.js",
     "browser-polyfill.js",
     "course_exporter.js",
     "courses_fix.js",
@@ -50,16 +53,26 @@
         "https://my.centraluniversity.ru/*"
       ],
       "js": [
+        "debug_utils.js",
+        "emoji_swap.js",
+        "course_card_simplifier.js",
         "course_exporter.js",
         "courses_fix.js",
         "dark_theme.js",
-        "debug_utils.js",
-        "emoji_swap.js",
         "homework_weight_fix.js",
-        "instant_doc_view_fix.js",
-        "tasks_fix.js"
+        "tasks_fix.js",
+        "instant_doc_view_fix.js"
       ],
       "run_at": "document_idle"
+    },
+    {
+        "matches": [
+            "https://id.centraluniversity.ru/*"
+        ],
+        "js": [
+            "fix_email_autocomplete.js"
+        ],
+        "run_at": "document_idle"
     }
   ]
 }
