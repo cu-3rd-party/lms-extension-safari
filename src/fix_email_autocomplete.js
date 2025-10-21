@@ -1,121 +1,88 @@
- (function() {
-     'use strict';
-     
-     function fixPasswordFields() {
-         console.log('Password Autofill Fix: searching for password fields...');
-         
-         // Находим все поля пароля
-         const passwordFields = document.querySelectorAll('input[type="password"]');
-         
-         passwordFields.forEach((field, index) => {
-             console.log(`Found password field ${index + 1}:`, field);
-             
-             // Сохраняем оригинальные значения
-             const originalAutocomplete = field.getAttribute('autocomplete');
-             const originalName = field.getAttribute('name');
-             const originalId = field.getAttribute('id');
-             
-             // Устанавливаем правильные атрибуты для автозаполнения
-             field.setAttribute('autocomplete', 'current-password');
-             
-             if (!field.getAttribute('name') || field.getAttribute('name') === '') {
-                 field.setAttribute('name', 'password');
-             }
-             
-             if (!field.getAttribute('id') || field.getAttribute('id') === '') {
-                 field.setAttribute('id', 'password-' + Date.now());
-             }
-             
-             console.log(`Fixed password field ${index + 1}:`, {
-                 originalAutocomplete,
-                 originalName,
-                 originalId,
-                 newAutocomplete: field.getAttribute('autocomplete'),
-                 newName: field.getAttribute('name'),
-                 newId: field.getAttribute('id')
-             });
-         });
-         
-         // Ищем поле для имени пользователя/email
-         const usernameFields = document.querySelectorAll('input[type="email"], input[type="text"][name*="user"], input[type="text"][name*="email"], input[type="text"][id*="user"], input[type="text"][id*="email"]');
-         
-         usernameFields.forEach((field, index) => {
-             console.log(`Found username field ${index + 1}:`, field);
-             
-             field.setAttribute('autocomplete', 'username');
-             
-             if (!field.getAttribute('name') || !field.getAttribute('name').includes('user')) {
-                 field.setAttribute('name', 'username');
-             }
-             
-             console.log(`Fixed username field ${index + 1}`);
-         });
-         
-         // Если не нашли поле username, создаем скрытое
-         if (usernameFields.length === 0 && passwordFields.length > 0) {
-             const hiddenUsername = document.createElement('input');
-             hiddenUsername.type = 'hidden';
-             hiddenUsername.name = 'username';
-             hiddenUsername.autocomplete = 'username';
-             hiddenUsername.value = '';
-             
-             const form = passwordFields[0].closest('form');
-             if (form) {
-                 form.appendChild(hiddenUsername);
-                 console.log('Added hidden username field to form');
-             }
-         }
-         
-         // Триггерим события для браузера
-         setTimeout(() => {
-             passwordFields.forEach(field => {
-                 // Создаем события для активации автозаполнения
-                 const focusEvent = new Event('focus', { bubbles: true });
-                 const inputEvent = new Event('input', { bubbles: true });
-                 
-                 field.dispatchEvent(focusEvent);
-                 field.dispatchEvent(inputEvent);
-                 
-                 // Быстрое мигание фокуса
-                 field.focus();
-                 setTimeout(() => field.blur(), 50);
-             });
-         }, 100);
-     }
-     
-     // Запускаем сразу после загрузки
-     if (document.readyState === 'loading') {
-         document.addEventListener('DOMContentLoaded', fixPasswordFields);
-     } else {
-         fixPasswordFields();
-     }
-     
-     // Запускаем также при динамических изменениях (для SPA)
-     const observer = new MutationObserver((mutations) => {
-         let shouldFix = false;
-         
-         mutations.forEach((mutation) => {
-             mutation.addedNodes.forEach((node) => {
-                 if (node.nodeType === 1) { // Element node
-                     if (node.querySelector && node.querySelector('input[type="password"]')) {
-                         shouldFix = true;
-                     }
-                 }
-             });
-         });
-         
-         if (shouldFix) {
-             setTimeout(fixPasswordFields, 2000);
-         }
-     });
-     
-     observer.observe(document.body, {
-         childList: true,
-         subtree: true
-     });
-     
-     // Дополнительный запуск через 2 секунды на случай динамической загрузки
-     setTimeout(fixPasswordFields, 500);
-     
-     console.log('Password Autofill Fix extension loaded');
- })();
+// content-script.js
+// Исправляет поля логина/пароля на id.centraluniversity.ru,
+// чтобы Safari мог предлагать автозаполнение iCloud Keychain.
+
+(function () {
+  const FLAG = 'data-icloud-fixer';
+
+  function setIfMissing(el, attr, value) {
+    const cur = el.getAttribute(attr);
+    if (!cur || cur.toLowerCase() !== value.toLowerCase()) {
+      el.setAttribute(attr, value);
+    }
+  }
+
+  function removeOff(el) {
+    const val = el.getAttribute('autocomplete');
+    if (val && val.toLowerCase() === 'off') el.removeAttribute('autocomplete');
+  }
+
+  function findUsernameField(form, passwordInput) {
+    const inputs = Array.from(form.querySelectorAll('input')).filter(i => i !== passwordInput);
+    
+    // Сначала ищем по типу
+    const email = inputs.find(i => i.type === 'email');
+    if (email) return email;
+
+    const text = inputs.find(i => ['text', 'search'].includes(i.type));
+    if (text) return text;
+
+    // Затем по атрибутам
+    const keywords = ['user', 'login', 'email', 'mail', 'username'];
+    return inputs.find(i =>
+      keywords.some(k =>
+        (i.name || '').toLowerCase().includes(k) ||
+        (i.id || '').toLowerCase().includes(k) ||
+        (i.placeholder || '').toLowerCase().includes(k) ||
+        (i.getAttribute('data-name') || '').toLowerCase().includes(k)
+      )
+    );
+  }
+
+  function fixForm(form) {
+    if (form.hasAttribute(FLAG)) return;
+    form.setAttribute(FLAG, 'true');
+    
+    // Не устанавливаем autocomplete="on" для всей формы, чтобы не мешать логике сайта
+    // form.setAttribute('autocomplete', 'on');
+
+    const pwds = Array.from(form.querySelectorAll('input[type="password"]'));
+    
+    pwds.forEach(pwd => {
+      removeOff(pwd);
+      setIfMissing(pwd, 'autocomplete', 'username');
+      
+      // Не создаем name и id если их нет - это может нарушить логику сайта
+      // if (!pwd.name) pwd.name = 'password';
+      // if (!pwd.id) pwd.id = 'password-' + Math.random().toString(36).slice(2, 8);
+
+      const user = findUsernameField(form, pwd);
+      if (user) {
+        removeOff(user);
+        setIfMissing(user, 'autocomplete', 'current-password');
+        // if (!user.name) user.name = 'username';
+        // if (!user.id) user.id = 'username-' + Math.random().toString(36).slice(2, 8);
+      } else {
+        // УБИРАЕМ создание скрытого поля - это вызывает проблему
+        // Вместо этого просто логируем, что поле username не найдено
+        console.log('ℹ️ Поле username не найдено в форме, но скрытое поле не создается');
+      }
+    });
+  }
+
+  function processDocument() {
+    document.querySelectorAll('form').forEach(fixForm);
+  }
+
+  // Первичный проход
+  processDocument();
+
+  // Наблюдатель за динамическими изменениями
+  const mo = new MutationObserver(() => processDocument());
+  mo.observe(document.documentElement, {
+    childList: true,
+    subtree: true
+  });
+
+  console.log('✅ iCloud Keychain Fixer активирован на', location.href);
+})();
