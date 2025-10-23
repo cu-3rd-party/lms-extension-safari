@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "CU LMS Enhancer",
-  "version": "1.3.1",
+  "version": "1.4",
   "description": "Неофициальная доработка CU LMS, возвращает утерянные функции, добавляет темную тему, отображение весов заданий",
   "permissions": [
     "activeTab",
@@ -39,7 +39,9 @@
     "instant_doc_view_fix.js",
     "style.css",
     "style_oled.css",
-    "tasks_fix.js"
+    "tasks_fix.js",
+    "future_exams_view.js",
+    "archive-statements.js"
   ],
   "icons": {
     "128": "icon128.png"
@@ -61,7 +63,9 @@
         "dark_theme.js",
         "homework_weight_fix.js",
         "tasks_fix.js",
-        "instant_doc_view_fix.js"
+        "instant_doc_view_fix.js",
+        "future_exams_view.js",
+        "archive-statements.js"
       ],
       "run_at": "document_idle"
     },

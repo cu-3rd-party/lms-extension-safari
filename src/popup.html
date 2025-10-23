@@ -65,16 +65,16 @@
 </head>
 
 <body>
-    <h3>Темы</h3>
+    <h3>Темная тема</h3>
     <div class="toggle-container">
-        <span>Темная:</span>
+        <span>Статус:</span>
         <label class="switch">
             <input type="checkbox" id="theme-toggle">
             <span class="slider"></span>
         </label>
     </div>
     <div class="toggle-container" style="margin-top:8px">
-        <span>OLED:</span>
+        <span>OLED чёрный:</span>
         <label class="switch">
             <input type="checkbox" id="oled-toggle">
             <span class="slider"></span>
@@ -96,7 +96,13 @@
             <span class="slider"></span>
         </label>
     </div>
-
+    <div class="toggle-container" style="margin-top:8px">
+        <span>Видеть предстоящие контрольные:</span>
+        <label class="switch">
+            <input type="checkbox" id="future-exams-view-toggle">
+            <span class="slider"></span>
+        </label>
+    </div>
     <script type="application/javascript" src="browser-polyfill.js"></script>
     <script src="popup.js"></script>
 </body>
