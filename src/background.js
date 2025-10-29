@@ -45,13 +45,21 @@ function handleNavigation(tabId, url) {
     if (url.includes("/longreads/")) {
         browser.scripting.executeScript({
             target: { tabId: tabId },
-            files: ["homework_weight_fix.js", "instant_doc_view_fix.js"]
+            // --- ИЗМЕНЕНИЕ ЗДЕСЬ ---
+            files: ["debug_utils.js", "homework_weight_fix.js", "instant_doc_view_fix.js", "rename_hw.js"]
+            // --- КОНЕЦ ИЗМЕНЕНИЯ ---
         }).catch(err => window.cuLmsLog(`[BG_LOG] Error injecting Longreads scripts:`, err));
     }
-    if (url.includes("/learn/reports/student-performance")) {
-         browser.scripting.executeScript({
+    if (url.includes("/learn/reports/student-")) {
+        browser.scripting.executeScript({
             target: { tabId: tabId },
-            files: ["archive-statements.js"]
-        }).catch(err => console.error(`[BG_LOG] Error injecting reports scripts:`, err))
+            files: ["browser-polyfill.js", "grade_fix.js"]
+        }).catch(err => window.cuLmsLog(`[BG_LOG] Error injecting Grade Fix scripts:`, err));
+    }
+    if (url.includes("/users/")) {
+        browser.scripting.executeScript({
+            target: { tabId: tabId },
+            files: ["browser-polyfill.js", "utils.js", "profile_fix.js"]
+        }).catch(err => window.cuLmsLog(`[BG_LOG] Error injecting Profile Fix scripts:`, err));
     }
 }
