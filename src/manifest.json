@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "CU LMS Enhancer",
-  "version": "1.5",
+  "version": "1.5.1",
   "description": "Неофициальная доработка CU LMS, возвращает утерянные функции, добавляет темную тему, отображение весов заданий",
   "permissions": [
     "activeTab",
@@ -44,7 +44,9 @@
       "gist_dark.css",
       "popup_dark.css",
       "rename_hw.js",
-      "version_check.js"
+      "version_check.js",
+      "advanced_statements.js",
+      "course_overview_autoscroll.js"
   ],
   "icons": {
     "128": "icon128.png"
@@ -73,7 +75,9 @@
           "metrics_statements.js",
           "popup.js",
           "rename_hw.js",
-          "version_check.js"
+          "version_check.js",
+          "advanced_statements.js",
+          "course_overview_autoscroll.js"
       ],
       "run_at": "document_idle"
     },
