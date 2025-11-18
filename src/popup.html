@@ -7,35 +7,30 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400&display=swap');
 
-        /* Safari игнорирует эти правила, но Chrome/Firefox — нет */
-        html, body {
-            height: auto !important;
-            max-height: none !important;
-            overflow: visible !important;
-        }
-
         body {
             font-family: 'Inter', sans-serif;
-            font-weight: 400;
             font-size: 16px;
             width: auto !important;
             min-width: 350px;
             padding: 10px;
             background-color: #f0f0f0;
-            box-sizing: border-box;
         }
 
-        .toggle-container {
+        .setting-container {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            margin-bottom: 8px;
+            margin-bottom: 12px;
         }
 
-        .toggle-label {
+        .setting-label {
             flex: 1;
             margin-right: 10px;
             line-height: 1.4;
+        }
+        
+        .disabled-label {
+            color: #999;
         }
 
         .section {
@@ -63,24 +58,17 @@
         .switch input { display: none; }
 
         .slider {
-            position: absolute;
-            cursor: pointer;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
+            position: absolute; cursor: pointer;
+            top: 0; left: 0; right: 0; bottom: 0;
             background-color: #ccc;
             transition: .4s;
             border-radius: 24px;
         }
 
         .slider:before {
-            position: absolute;
-            content: "";
-            height: 16px;
-            width: 16px;
-            left: 4px;
-            bottom: 4px;
+            position: absolute; content: "";
+            height: 16px; width: 16px;
+            left: 4px; bottom: 4px;
             background-color: white;
             transition: .4s;
             border-radius: 50%;
@@ -89,22 +77,6 @@
         input:checked + .slider { background-color: #2196F3; }
         input:disabled + .slider { cursor: not-allowed; background-color: #e0e0e0; }
         input:checked + .slider:before { transform: translateX(26px); }
-
-        .notice {
-            padding: 10px;
-            margin-top: 15px;
-            text-align: center;
-            background-color: #e9e9eb;
-            border-radius: 6px;
-            font-size: 13px;
-            color: #333;
-            transition: background-color 0.3s, color 0.3s;
-        }
-
-        .dropdown-container {
-            position: relative;
-            width: 100%;
-        }
 
         .dropdown-select {
             width: 100%;
@@ -121,21 +93,27 @@
             background-position: right 12px center;
             padding-right: 32px;
         }
+        
+        .notice {
+            padding: 10px; margin-top: 15px; text-align: center;
+            background-color: #e9e9eb; border-radius: 6px;
+            font-size: 13px; color: #333;
+        }
     </style>
 </head>
 
 <body>
     <div class="section">
         <h3>Выбор темы</h3>
-        <div class="toggle-container">
-            <span class="toggle-label">Темная:</span>
+        <div class="setting-container">
+            <span class="setting-label">Темная:</span>
             <label class="switch">
                 <input type="checkbox" id="theme-toggle">
                 <span class="slider"></span>
             </label>
         </div>
-        <div class="toggle-container">
-            <span class="toggle-label">OLED:</span>
+        <div class="setting-container">
+            <span class="setting-label" id="oled-label">OLED:</span>
             <label class="switch">
                 <input type="checkbox" id="oled-toggle">
                 <span class="slider"></span>
@@ -145,33 +123,44 @@
 
     <div class="section">
         <h3>Полезные скрипты</h3>
-        <div class="toggle-container">
-            <span class="toggle-label">Авто переименование ДЗ:</span>
+        <div class="setting-container">
+            <span class="setting-label">Авто переименование ДЗ:</span>
             <label class="switch">
                 <input type="checkbox" id="auto-rename-toggle">
                 <span class="slider"></span>
             </label>
         </div>
-        <div class="toggle-container">
-            <span class="toggle-label">Статус заданий в обзоре курса:</span>
+        <!-- Контейнер для выбора шаблона, скрыт по умолчанию -->
+        <div class="setting-container" id="auto-rename-format-container" style="display: none;">
+            <span class="setting-label">Формат имени:</span>
+            <div class="dropdown-container">
+                <select class="dropdown-select" id="rename-template-select">
+                    <option value="dz_fi">ДЗ_Фамилия_Имя</option>
+                    <option value="dz_if">ДЗ_Имя_Фамилия</option>
+                    <option value="hw_fi">HW_Фамилия_Имя</option>
+                    <option value="hw_if">HW_Имя_Фамилия</option>
+                </select>
+            </div>
+        </div>
+        <!-- Другие скрипты -->
+        <div class="setting-container">
+            <span class="setting-label">Статус заданий в обзоре курса:</span>
             <label class="switch">
                 <input type="checkbox" id="course-overview-task-status-toggle">
                 <span class="slider"></span>
             </label>
         </div>
-
-        <div class="toggle-container">
-            <span class="toggle-label">Стандартизированная ведомость:</span>
+        <div class="setting-container">
+            <span class="setting-label">Стандартизированная ведомость:</span>
             <label class="switch">
-                <input type="checkbox" id="advanced-statements-toggle" checked>
+                <input type="checkbox" id="advanced-statements-toggle">
                 <span class="slider"></span>
             </label>
         </div>
-
-        <div class="toggle-container">
-            <span class="toggle-label" id="end-of-course-calc-label">Расчёт на конец курса:</span>
+        <div class="setting-container">
+            <span class="setting-label" id="end-of-course-calc-label">Расчёт на конец курса:</span>
             <label class="switch">
-                <input type="checkbox" id="end-of-course-calc-toggle" checked>
+                <input type="checkbox" id="end-of-course-calc-toggle">
                 <span class="slider"></span>
             </label>
         </div>
@@ -179,30 +168,15 @@
 
     <div class="section">
         <h3>Визуальные улучшения</h3>
-        <div class="toggle-container">
-            <span class="toggle-label">Замена кружков на сердечки:</span>
-            <label class="switch">
-                <input type="checkbox" id="emoji-hearts-toggle">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <div class="toggle-container">
-            <span class="toggle-label">Возвращение старого дизайна курсов:</span>
-            <label class="switch">
-                <input type="checkbox" id="old-courses-design-toggle">
-                <span class="slider"></span>
-            </label>
-        </div>
-        <div class="toggle-container">
-            <span class="toggle-label">Видеть предстоящие контрольные:</span>
+        <div class="setting-container">
+            <span class="setting-label">Видеть предстоящие контрольные:</span>
             <label class="switch">
                 <input type="checkbox" id="future-exams-view-toggle">
                 <span class="slider"></span>
             </label>
         </div>
-
-        <div class="toggle-container" id="future-exams-display-container" style="display: none;">
-            <span class="toggle-label">Формат отображения:</span>
+        <div class="setting-container" id="future-exams-display-container" style="display: none;">
+            <span class="setting-label">Формат отображения:</span>
             <div class="dropdown-container">
                 <select class="dropdown-select" id="future-exams-display-format">
                     <option value="date">Разброс дат</option>
@@ -211,43 +185,21 @@
             </div>
         </div>
     </div>
-
+    
     <div class="section">
-        <h3>Разные мелочи</h3>
-        <div class="toggle-container">
-            <span class="toggle-label">Автоскролл до последней недели в обзоре курса:</span>
-            <label class="switch">
-                <input type="checkbox" id="course-overview-autoscroll-toggle">
-                <span class="slider"></span>
-            </label>
-        </div>
+      <h3>Разные мелочи</h3>
+      <div class="toggle-container">
+          <span class="toggle-label">Автоскролл до последней недели в обзоре курса:</span>
+          <label class="switch">
+              <input type="checkbox" id="course-overview-autoscroll-toggle">
+              <span class="slider"></span>
+          </label>
+      </div>
     </div>
 
     <div id="reload-notice" class="notice" style="display: none;">Изменения применятся после закрытия меню</div>
 
     <script src="browser-polyfill.js"></script>
     <script src="popup.js"></script>
-
-    <!-- === AUTO-RESIZE FOR SAFARI === -->
-    <script>
-        function resizePopup() {
-            const height = document.body.scrollHeight;
-
-            // Safari: отправляем запрос в background.js
-            try {
-                browser.runtime.sendMessage({ type: "resize", height });
-            } catch (e) {}
-
-            // Chrome/Firefox fallback
-            try {
-                window.resizeTo(document.body.offsetWidth, height + 20);
-            } catch (e) {}
-        }
-
-        window.addEventListener("load", resizePopup);
-
-        new MutationObserver(resizePopup)
-            .observe(document.body, { childList: true, subtree: true, attributes: true });
-    </script>
 </body>
 </html>
