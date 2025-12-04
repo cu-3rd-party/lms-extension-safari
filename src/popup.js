@@ -1,126 +1,319 @@
+// popup.js - УНИВЕРСАЛЬНАЯ ФИНАЛЬНАЯ ВЕРСИЯ (с контекстной плашкой, всеми опциями и загрузкой стикеров)
 'use strict';
 
-document.addEventListener('DOMContentLoaded', () => {
-    // --- НОВЫЙ БЛОК: Логика для применения темы к самому popup ---
-    const POPUP_STYLE_ID = 'popup-dark-theme-style';
+// --- ОПРЕДЕЛЕНИЕ КОНТЕКСТА ---
+const isInsideIframe = (window.self !== window.top);
 
-    /**
-     * Применяет или удаляет CSS-файл темной темы из документа popup.
-     * @param {boolean} isEnabled - Включить ли темную тему.
-     */
-    function applyPopupTheme(isEnabled) {
-        const existingLink = document.getElementById(POPUP_STYLE_ID);
-        
-        if (isEnabled) {
-            document.body.classList.add('dark-theme');
-            if (!existingLink) {
-                const link = document.createElement('link');
-                link.id = POPUP_STYLE_ID;
-                link.rel = 'stylesheet';
-                link.href = browser.runtime.getURL('popup_dark.css'); // Указываем путь к файлу стилей
-                document.head.appendChild(link);
-            }
-        } else {
-            document.body.classList.remove('dark-theme');
-            if (existingLink) {
-                existingLink.remove();
-            }
-        }
+// --- БЛОК ДЛЯ УПРАВЛЕНИЯ ТЕМОЙ POPUP ---
+const darkThemeLinkID = 'popup-dark-theme-style';
+
+function applyPopupTheme(isEnabled) {
+    const existingLink = document.getElementById(darkThemeLinkID);
+    if (isEnabled && !existingLink) {
+        const link = document.createElement('link');
+        link.id = darkThemeLinkID;
+        link.rel = 'stylesheet';
+        link.href = browser.runtime.getURL('popup_dark.css');
+        document.head.appendChild(link);
+        document.body.classList.add('dark-theme');
+    } else if (!isEnabled && existingLink) {
+        existingLink.remove();
+        document.body.classList.remove('dark-theme');
     }
+}
+
+// --- УПРАВЛЕНИЕ ПЕРЕКЛЮЧАТЕЛЯМИ И ЭЛЕМЕНТАМИ ---
+const toggles = {
+    themeEnabled: document.getElementById('theme-toggle'),
+    oledEnabled: document.getElementById('oled-toggle'),
+    autoRenameEnabled: document.getElementById('auto-rename-toggle'),
+    snowEnabled: document.getElementById('snow-toggle'),
+    stickerEnabled: document.getElementById('sticker-toggle'),
+    courseOverviewTaskStatusToggle: document.getElementById('course-overview-task-status-toggle'),
+    emojiHeartsEnabled: document.getElementById('emoji-hearts-toggle'),
+    oldCoursesDesignToggle: document.getElementById('old-courses-design-toggle'),
+    futureExamsViewToggle: document.getElementById('future-exams-view-toggle'),
+    courseOverviewAutoscrollToggle: document.getElementById('course-overview-autoscroll-toggle'),
+    advancedStatementsEnabled: document.getElementById('advanced-statements-toggle'),
+    endOfCourseCalcEnabled: document.getElementById('end-of-course-calc-toggle'),
+};
+
+// Элементы UI для зависимых настроек
+const endOfCourseCalcLabel = document.getElementById('end-of-course-calc-label');
+const futureExamsDisplayContainer = document.getElementById('future-exams-display-container');
+const futureExamsDisplayFormat = document.getElementById('future-exams-display-format');
+
+// --- НОВОЕ: элементы UI для авто-переименования ДЗ ---
+const autoRenameFormatContainer = document.getElementById('auto-rename-format-container');
+const renameTemplateSelect = document.getElementById('rename-template-select');
+
+// Элементы UI для стикеров
+const stickerUploadContainer = document.getElementById('sticker-upload-container');
+const stickerFileInput = document.getElementById('sticker-file-input');
+const stickerPreview = document.getElementById('sticker-preview');
+const noStickerText = document.getElementById('no-sticker-text');
+const stickerResetBtn = document.getElementById('sticker-reset-btn');
+
+// Уведомление о перезагрузке (для iframe)
+const reloadNotice = document.getElementById('reload-notice');
+
+// Объединяем все ключи настроек для удобства
+const allKeys = [...Object.keys(toggles), 'futureExamsDisplayFormat'];
+let pendingChanges = {};
+
+
+// --- ФУНКЦИИ ДЛЯ РАБОТЫ СО СТИКЕРАМИ ---
+
+/**
+ * Показывает или скрывает блок загрузки картинки
+ */
+function updateStickerUI(isEnabled) {
+    if (stickerUploadContainer) {
+        stickerUploadContainer.style.display = isEnabled ? 'block' : 'none';
+    }
+}
+
+/**
+ * Загружает превью стикера из local storage (не sync, т.к. размер большой)
+ */
+function loadStickerImage() {
+    if (!stickerPreview || !noStickerText) return;
     
-    // --- Определение всех элементов управления ---
-    const controls = {
-        themeEnabled: document.getElementById('theme-toggle'),
-        oledEnabled: document.getElementById('oled-toggle'),
-        autoRenameEnabled: document.getElementById('auto-rename-toggle'),
-        renameTemplate: document.getElementById('rename-template-select'),
-        courseOverviewTaskStatusToggle: document.getElementById('course-overview-task-status-toggle'),
-        advancedStatementsEnabled: document.getElementById('advanced-statements-toggle'),
-        endOfCourseCalcEnabled: document.getElementById('end-of-course-calc-toggle'),
-        emojiHeartsEnabled: document.getElementById('emoji-hearts-toggle'),
-        oldCoursesDesignToggle: document.getElementById('old-courses-design-toggle'),
-        futureExamsViewToggle: document.getElementById('future-exams-view-toggle'),
-        futureExamsDisplayFormat: document.getElementById('future-exams-display-format'),
-        courseOverviewAutoscrollToggle: document.getElementById('course-overview-autoscroll-toggle'),
-    };
+    browser.storage.local.get(['customStickerData']).then((result) => {
+        if (result.customStickerData) {
+            stickerPreview.src = result.customStickerData;
+            stickerPreview.style.display = 'inline-block';
+            noStickerText.style.display = 'none';
+        } else {
+            stickerPreview.src = '';
+            stickerPreview.style.display = 'none';
+            noStickerText.style.display = 'inline-block';
+        }
+    });
+}
 
-    const dependentElements = {
-        oledLabel: document.getElementById('oled-label'),
-        endOfCourseCalcLabel: document.getElementById('end-of-course-calc-label'),
-        autoRenameFormatContainer: document.getElementById('auto-rename-format-container'),
-        futureExamsDisplayContainer: document.getElementById('future-exams-display-container'),
-    };
+// --- НОВОЕ: UI для авто-переименования ДЗ ---
+function updateAutoRenameUI(isEnabled) {
+    if (autoRenameFormatContainer) {
+        autoRenameFormatContainer.style.display = isEnabled ? 'block' : 'none';
+    }
+}
 
-    const allControlKeys = Object.keys(controls);
 
-    /**
-     * Обновляет состояние UI на основе данных из хранилища.
-     */
-    const updateUIFromStorage = () => {
-        browser.storage.sync.get(allControlKeys).then(data => {
-            allControlKeys.forEach(key => {
-                const element = controls[key];
-                if (!element) return;
-                if (element.type === 'checkbox') {
-                    element.checked = !!data[key];
-                } else if (element.tagName === 'SELECT') {
-                    element.value = data[key] || (key === 'renameTemplate' ? 'dz_fi' : 'date');
+// --- ОСНОВНАЯ ЛОГИКА ОБНОВЛЕНИЯ СОСТОЯНИЙ ---
+
+/**
+ * Обновляет состояние всех переключателей на основе данных из хранилища.
+ */
+function refreshToggleStates() {
+    // НОВОЕ: дополнительно читаем autoRenameTemplate
+    browser.storage.sync.get([...allKeys, 'autoRenameTemplate']).then((data) => {
+        allKeys.forEach(key => {
+            if (toggles[key]) {
+                toggles[key].checked = !!data[key];
+            }
+        });
+
+        // Особая логика для зависимых переключателей
+        const isThemeEnabled = !!data.themeEnabled;
+        const isAdvancedStatementsEnabled = !!data.advancedStatementsEnabled;
+        const isAutoRenameEnabled = !!data.autoRenameEnabled; // НОВОЕ
+
+        // OLED зависит от Темной темы
+        if (toggles.oledEnabled) {
+            toggles.oledEnabled.disabled = !isThemeEnabled;
+        }
+
+        // Калькулятор зависит от Расширенной ведомости
+        if (toggles.endOfCourseCalcEnabled) {
+            toggles.endOfCourseCalcEnabled.disabled = !isAdvancedStatementsEnabled;
+            endOfCourseCalcLabel.classList.toggle('disabled-label', !isAdvancedStatementsEnabled);
+        }
+
+        // Логика UI стикеров
+        if (data.stickerEnabled) {
+            updateStickerUI(true);
+            loadStickerImage();
+        } else {
+            updateStickerUI(false);
+        }
+
+        // НОВОЕ: логика UI авто-переименования
+        updateAutoRenameUI(isAutoRenameEnabled);
+        if (renameTemplateSelect && data.autoRenameTemplate) {
+            renameTemplateSelect.value = data.autoRenameTemplate;
+        }
+
+        // Применяем тему к самому popup
+        applyPopupTheme(isThemeEnabled);
+
+        // Обновляем отображение полей, зависящих от состояний переключателей
+        updateFormatDisplayVisibility(data.futureExamsDisplayFormat);
+    });
+}
+
+function updateFormatDisplayVisibility(displayFormat) {
+    if (toggles['futureExamsViewToggle'] && futureExamsDisplayContainer) {
+        futureExamsDisplayContainer.style.display = toggles['futureExamsViewToggle'].checked ? 'block' : 'none';
+    }
+
+    if (futureExamsDisplayFormat && displayFormat) {
+        futureExamsDisplayFormat.value = displayFormat;
+    }
+}
+
+
+// --- ДОБАВЛЕНИЕ ОБРАБОТЧИКОВ СОБЫТИЙ ---
+
+// 1. Обработчики для всех переключателей (checkboxes)
+allKeys.forEach(key => {
+    const toggleElement = toggles[key];
+    if (toggleElement) {
+        toggleElement.addEventListener('change', () => {
+            const isEnabled = toggleElement.checked;
+            const change = { [key]: isEnabled };
+
+            if (isInsideIframe) {
+                if (reloadNotice) reloadNotice.style.display = 'block';
+                pendingChanges = { ...pendingChanges, ...change };
+            } else {
+                browser.storage.sync.set(change);
+            }
+
+            // --- Логика зависимостей ---
+            
+            // Зависимость OLED от Темы
+            if (key === 'themeEnabled') {
+                if (toggles.oledEnabled) {
+                    toggles.oledEnabled.disabled = !isEnabled;
+                    if (!isEnabled && toggles.oledEnabled.checked) {
+                        toggles.oledEnabled.checked = false;
+                        const oledChange = { oledEnabled: false };
+                        if (isInsideIframe) pendingChanges = { ...pendingChanges, ...oledChange };
+                        else browser.storage.sync.set(oledChange);
+                    }
                 }
-            });
-            
-            // Применяем тему к самому окну popup
-            applyPopupTheme(!!data.themeEnabled);
-            
-            // Обновляем видимость зависимых элементов
-            updateDependentUI();
+            }
+            // Зависимость Калькулятора от Ведомости
+            else if (key === 'advancedStatementsEnabled') {
+                if (toggles.endOfCourseCalcEnabled) {
+                    toggles.endOfCourseCalcEnabled.disabled = !isEnabled;
+                    endOfCourseCalcLabel.classList.toggle('disabled-label', !isEnabled);
+                    if (!isEnabled && toggles.endOfCourseCalcEnabled.checked) {
+                        toggles.endOfCourseCalcEnabled.checked = false;
+                        const endOfCourseChange = { endOfCourseCalcEnabled: false };
+                        if (isInsideIframe) pendingChanges = { ...pendingChanges, ...endOfCourseChange };
+                        else browser.storage.sync.set(endOfCourseChange);
+                    }
+                }
+            }
+            // Видимость настроек экзаменов
+            else if (key === 'futureExamsViewToggle') {
+                updateFormatDisplayVisibility();
+            }
+            // Видимость настроек стикеров
+            else if (key === 'stickerEnabled') {
+                updateStickerUI(isEnabled);
+                if (isEnabled) loadStickerImage();
+            }
+            // НОВОЕ: видимость выбора шаблона авто-переименования
+            else if (key === 'autoRenameEnabled') {
+                updateAutoRenameUI(isEnabled);
+            }
         });
-    };
-    
-    const updateDependentUI = () => {
-        const isThemeEnabled = controls.themeEnabled.checked;
-        controls.oledEnabled.disabled = !isThemeEnabled;
-        dependentElements.oledLabel.classList.toggle('disabled-label', !isThemeEnabled);
-
-        const isAdvancedStatementsEnabled = controls.advancedStatementsEnabled.checked;
-        controls.endOfCourseCalcEnabled.disabled = !isAdvancedStatementsEnabled;
-        dependentElements.endOfCourseCalcLabel.classList.toggle('disabled-label', !isAdvancedStatementsEnabled);
-
-        dependentElements.autoRenameFormatContainer.style.display = controls.autoRenameEnabled.checked ? 'flex' : 'none';
-        dependentElements.futureExamsDisplayContainer.style.display = controls.futureExamsViewToggle.checked ? 'flex' : 'none';
-    };
-
-    /**
-     * Сохраняет изменения в хранилище.
-     */
-    const handleControlChange = (key, value) => {
-        let changesToSave = { [key]: value };
-        if (key === 'themeEnabled' && !value) {
-            changesToSave.oledEnabled = false;
-        }
-        if (key === 'advancedStatementsEnabled' && !value) {
-            changesToSave.endOfCourseCalcEnabled = false;
-        }
-        browser.storage.sync.set(changesToSave);
-    };
-
-    // --- Назначение обработчиков событий ---
-    allControlKeys.forEach(key => {
-        const element = controls[key];
-        if (!element) return;
-        const eventType = (element.type === 'checkbox') ? 'change' : 'input';
-        element.addEventListener(eventType, () => {
-            const value = (element.type === 'checkbox') ? element.checked : element.value;
-            handleControlChange(key, value);
-        });
-    });
-
-    // --- Синхронизация UI ---
-    browser.storage.onChanged.addListener((changes, area) => {
-        if (area === 'sync') {
-            updateUIFromStorage();
-        }
-    });
-
-    // --- Первоначальная загрузка ---
-    updateUIFromStorage();
+    }
 });
+
+// 2. Обработчик для выпадающего списка формата экзаменов
+if (futureExamsDisplayFormat) {
+    futureExamsDisplayFormat.addEventListener('change', () => {
+        const selectedFormat = futureExamsDisplayFormat.value;
+        if (isInsideIframe) {
+            if (reloadNotice) reloadNotice.style.display = 'block';
+            pendingChanges['futureExamsDisplayFormat'] = selectedFormat;
+        } else {
+            browser.storage.sync.set({ futureExamsDisplayFormat: selectedFormat });
+        }
+    });
+}
+
+// 3. НОВОЕ: обработчик выбора шаблона авто-переименования ДЗ
+if (renameTemplateSelect) {
+    renameTemplateSelect.addEventListener('change', () => {
+        const template = renameTemplateSelect.value;
+        if (isInsideIframe) {
+            if (reloadNotice) reloadNotice.style.display = 'block';
+            pendingChanges['autoRenameTemplate'] = template;
+        } else {
+            browser.storage.sync.set({ autoRenameTemplate: template });
+        }
+        // Тут мы только сохраняем шаблон.
+        // Контент-скрипт должен сам подхватить это через storage.onChanged и дернуть rename_hw.
+    });
+}
+
+// 4. Обработчик ЗАГРУЗКИ ФАЙЛА (Стикеры)
+if (stickerFileInput) {
+    stickerFileInput.addEventListener('change', (event) => {
+        const file = event.target.files[0];
+        if (!file) return;
+
+        // Лимит 3 МБ
+        if (file.size > 3 * 1024 * 1024) {
+            alert('Файл слишком большой! Пожалуйста, выберите картинку до 3 МБ.');
+            stickerFileInput.value = '';
+            return;
+        }
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const base64String = e.target.result;
+            // Сохраняем в LOCAL storage (большие данные)
+            browser.storage.local.set({ customStickerData: base64String }).then(() => {
+                loadStickerImage();
+                // Если мы не в iframe, можно уведомить background или content script,
+                // но storage listener там сработает сам.
+            });
+        };
+        reader.readAsDataURL(file);
+    });
+}
+
+// 5. Обработчик УДАЛЕНИЯ КАРТИНКИ (Стикеры)
+if (stickerResetBtn) {
+    stickerResetBtn.addEventListener('click', () => {
+        browser.storage.local.remove('customStickerData').then(() => {
+            loadStickerImage();
+            stickerFileInput.value = '';
+        });
+    });
+}
+
+
+// --- СИСТЕМНЫЕ СЛУШАТЕЛИ ---
+
+// Слушатели сообщений из iframe (если popup открыт внутри страницы)
+if (isInsideIframe) {
+    window.addEventListener('message', (event) => {
+        if (event.source !== window.parent) return;
+        if (event.data && event.data.action === 'getPendingChanges') {
+            window.parent.postMessage({
+                action: 'receivePendingChanges',
+                payload: pendingChanges
+            }, '*');
+            pendingChanges = {};
+            if (reloadNotice) reloadNotice.style.display = 'none';
+        }
+    });
+}
+
+// Слушаем изменения в хранилище, чтобы popup всегда отражал актуальное состояние
+// (например, если открыто несколько вкладок или настройки изменены программно)
+browser.storage.onChanged.addListener((changes, area) => {
+    if (area === 'sync') {
+        refreshToggleStates();
+    }
+});
+
+// Первоначальная инициализация
+refreshToggleStates();

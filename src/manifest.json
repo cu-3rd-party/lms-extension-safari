@@ -1,94 +1,82 @@
 {
-  "manifest_version": 2,
-  "name": "CU LMS Enhancer",
-  "version": "1.5.1",
-  "description": "Неофициальная доработка CU LMS, возвращает утерянные функции, добавляет темную тему, отображение весов заданий",
-  "permissions": [
-    "activeTab",
-    "storage",
-    "tabs",
-    "webNavigation",
-    "https://my.centraluniversity.ru/*",
-    "https://id.centraluniversity.ru/*",
-    "https://gist.githubusercontent.com/*",
-    "https://gist.github.com/*",
-    "https://api.github.com/*"
-  ],
-  "background": {
-    "scripts": [
-      "browser-polyfill.js",
-      "background.js"
+    "manifest_version": 3,
+    "name": "CU LMS Enhancer",
+    "version": "1.6",
+    "description": "Неофициальная доработка CU LMS, возвращает утерянные функции, добавляет темную тему, отображение весов заданий",
+    "permissions": [
+        "storage",
+        "scripting",
+        "webNavigation"
     ],
-    "persistent": false
-  },
-  "web_accessible_resources": [
-      "browser-polyfill.js",
-      "icons/*.svg",
-      "icons/*.png",
-      "course_card_simplifier.js",
-      "future_exams_view.js",
-      "course_overview_task_status.js",
-      "tasks_fix.js",
-      "courses_fix.js",
-      "debug_utils.js",
-      "instant_doc_view_fix.js",
-      "emoji_swap.js",
-      "style.css",
-      "style_oled.css",
-      "dark_theme.js",
-      "archive-statements.js",
-      "plugin_page_loader.js",
-      "metrics_statements.js",
-      "popup.html",
-      "popup.js",
-      "gist_dark.css",
-      "popup_dark.css",
-      "rename_hw.js",
-      "version_check.js",
-      "advanced_statements.js",
-      "course_overview_autoscroll.js"
-  ],
-  "icons": {
-    "128": "icon128.png"
-  },
-  "browser_action": {
-    "default_popup": "popup.html"
-  },
-  "content_scripts": [
-    {
-      "matches": [
-        "https://my.centraluniversity.ru/*"
-      ],
-      "js": [
-          "browser-polyfill.js",
-          "course_card_simplifier.js",
-          "future_exams_view.js",
-          "course_overview_task_status.js",
-          "tasks_fix.js",
-          "courses_fix.js",
-          "debug_utils.js",
-          "instant_doc_view_fix.js",
-          "emoji_swap.js",
-          "dark_theme.js",
-          "archive-statements.js",
-          "plugin_page_loader.js",
-          "metrics_statements.js",
-          "popup.js",
-          "rename_hw.js",
-          "version_check.js",
-          "advanced_statements.js",
-          "course_overview_autoscroll.js"
-      ],
-      "run_at": "document_idle"
+    "host_permissions": [
+        "https://my.centraluniversity.ru/*",
+        "https://id.centraluniversity.ru/*",
+        "https://gist.github.com/*"
+    ],
+    "background": {
+        "service_worker": "background.js"
     },
-    {
-        "matches": [
-            "https://id.centraluniversity.ru/*"
-        ],
-        "js": [
-            "fix_email_autocomplete.js"
-        ],
-        "run_at": "document_idle"
+    "action": {
+        "default_popup": "popup.html"
+    },
+    "content_scripts": [
+        {
+            "matches": [
+                "https://my.centraluniversity.ru/*",
+                "https://id.centraluniversity.ru/*",
+                "https://gist.github.com/*"
+            ],
+            "js": [
+                "debug_utils.js"
+            ],
+            "run_at": "document_start"
+        },
+        {
+            "matches": [
+                "https://id.centraluniversity.ru/*"
+            ],
+            "js": [
+                "fix_email_autocomplete.js"
+            ],
+            "run_at": "document_idle"
+        }
+    ],
+    "web_accessible_resources": [
+        {
+            "resources": [
+                "browser-polyfill.js",
+                "icons/*.svg",
+                "icons/*.png",
+                "course_card_simplifier.js",
+                "future_exams_view.js",
+                "course_overview_task_status.js",
+                "tasks_fix.js",
+                "courses_fix.js",
+                "debug_utils.js",
+                "instant_doc_view_fix.js",
+                "emoji_swap.js",
+                "style.css",
+                "style_oled.css",
+                "dark_theme.js",
+                "archive-statements.js",
+                "plugin_page_loader.js",
+                "metrics_statements.js",
+                "popup.html",
+                "popup.js",
+                "gist_dark.css",
+                "popup_dark.css",
+                "rename_hw.js",
+                "version_check.js",
+                "advanced_statements.js",
+                "snow.js",
+                "course_card_image_replacer.js"
+            ],
+            "matches": [
+                "https://my.centraluniversity.ru/*"
+            ]
+        }
+    ],
+    "icons": {
+        "128": "icon128.png"
     }
-  ]
 }

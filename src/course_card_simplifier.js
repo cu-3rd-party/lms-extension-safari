@@ -34,7 +34,7 @@ function styleSimplifiedCard(simpleContainer, fontSize, isDarkTheme) {
         box-sizing: border-box;
         word-wrap: break-word;
         overflow-wrap: break-word;
-        position: relative;
+        position: relative; 
         display: flex;
         flex-direction: column;
         justify-content: center;

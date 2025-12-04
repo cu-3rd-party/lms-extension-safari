@@ -18,9 +18,9 @@ async function activateCourseOverviewAutoscroll() {
 
         const lastItem = accordionItems[accordionItems.length - 1];
         console.log('Scrolling to last accordion item:', lastItem);
-        lastItem.scrollIntoView({
-            behavior: 'smooth',
-            block: 'center'
+        lastItem.scrollIntoView({ 
+            behavior: 'smooth', 
+            block: 'center' 
         });
 
         
